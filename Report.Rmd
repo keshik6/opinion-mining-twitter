@@ -1,0 +1,105 @@
+---
+title: "Twitter Sentimental Analysis related to Popular Cryptocurrencies"
+author: "Keshik"
+date: "May 22, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load relevant libraries
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(textcat)
+library(cldr)
+library(sentimentr)
+library(MVR)
+library(anytime)
+```
+
+# Read raw data and process it to prepare for analysis and visualization
+```{r warning=FALSE, message=FALSE}
+data_file_path <- "E:\\Twitter-Sentimental_Analysis_related_to_Cryptocurrencies\\TweetsData\\tweets"
+collection_year <-  "2014"
+
+files_path = paste(data_file_path, collection_year, sep = "")
+
+list_file <- list.files(path = files_path , pattern = "*.csv")
+
+bitcoinPrice <- read.csv(paste("BitcoinPriceData/bitcoin_", collection_year, "_prices.csv", sep = ""), sep = ",")
+
+
+for (fileName in list_file){
+  tweets <- read_csv2(paste(files_path, fileName, sep = "\\"))
+
+  tweets$text <- tweets$text %>%
+    str_remove_all("\n") %>%
+    str_remove_all("((www\\.[^\\s]+)|(https?://[^\\s]+)|(pic\\.[^\\s]+))") %>%
+    str_remove_all('@(\\s+)') %>%
+    str_remove_all("^rt+") %>%
+    str_remove_all('#(\\s+)') %>%
+    str_replace_all('\\s+', " ") %>%
+    str_remove_all('"')
+  
+  tweets <- unique(tweets)
+    
+  tweets <- tweets %>%
+    mutate(language = detectLanguage(documents = tweets$text, isPlainText = TRUE)[,1]) %>%
+    filter(language == "ENGLISH") %>%
+    mutate(sentimentScore = 0)
+  
+  tweets <- tweets %>%
+    mutate(unixTime = as.integer(as.POSIXct(tweets$date, tz = "GMT")))
+  
+  filteredPrice <- bitcoinPrice %>%
+    select(Timestamp, Weighted_Price)
+  
+  filteredPrice$Timestamp <- as.numeric(levels(droplevels(filteredPrice$Timestamp)))
+    
+  tweets <- left_join(tweets, filteredPrice, by= c("unixTime" = "Timestamp"))
+  
+  for (i in 1:nrow(tweets)){
+    DF = sentiment(tweets$text[i])
+    DF = DF[complete.cases(DF), ]
+    if (nrow(DF) >1){
+      tweets$sentimentScore[i] = sum(DF[,3]*DF[,4])/sum(DF[,3])
+    }
+    else{
+      tweets$sentimentScore[i] = sum(DF[1,4])
+    }
+  }
+  
+  tweets %>%
+    select(username, date, unixTime, text, sentimentScore, Weighted_Price) %>%
+    write.csv(file = paste("Processed-tweets/tweets", collection_year ,"/", fileName, sep = ""))
+}
+
+
+```
+
+
+# References
+1. https://www.kaggle.com/mczielinski/bitcoin-historical-data
+
+
+
+  hashtags = col_character(),
+  id = col_double(),
+  permalink = col_character()
+)
+Modify Chunk OptionsRun Current ChunkModify Chunk OptionsRun All Chunks AboveRun Current ChunkModify Chunk OptionsRun All Chunks AboveRun Current Chunk
+
+			
+ConsoleE:/Twitter-Sentimental_Analysis_related_to_Cryptocurrencies/
+			
+
+
+
+
+
